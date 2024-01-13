@@ -1,181 +1,92 @@
-﻿// using MySql.Data.MySqlClient;
-// using Microsoft.VisualBasic.FileIO;
-// using System.Net;
-// using System.Text;
-//
-// class Program
-// {
-//     string void InsertData(string)
-//     {
-//         
-//     }
-//     static void Main()
-//     {
-//         string connectionString = "server=localhost;user=root;password=dindon07;database=Lab_10;";
-//         MySqlConnection connection = new MySqlConnection(connectionString);
-//
-//         try
-//         {
-//             connection.Open();
-//             Console.WriteLine("Соединение установлено!");
-//
-//             // Выполнение запросов или операций с базой данных здесь
-//
-//             connection.Close();
-//         }
-//         catch (MySqlException ex)
-//         {
-//             Console.WriteLine("Ошибка подключения: " + ex.Message);
-//         }
-//
-//         string filePath = "/Users/pavelerokhin/CS_Labs/Lab_09/ticker.txt";
-//         WebClient client = new WebClient();
-//         using (StreamReader reader = new StreamReader(filePath))
-//         {
-//             string code;
-//             long now = DateTimeOffset.Now.ToUnixTimeSeconds();
-//             long year_ago = now - 31556926;
-//             while ((code = reader.ReadLine()) != null)
-//             {
-//                 string url =
-//                     $"https://query1.finance.yahoo.com/v7/finance/download/{code}?period1={year_ago}&period2={now}&interval=1d&events=history&includeAdjustedClose=true";
-//                 client.DownloadFile(new Uri(url), $"{code}.csv");
-//                 
-//             }
-//         }
-//     }
-// }
+﻿using MySql.Data.MySqlClient;
 
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Reflection.Emit;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.SqlServer;
-
-class lab10
+class Program
 {
-    public class TodaysCondition
+    static public string Parse(string inputString)
     {
-        public int id { get; set; }
-        public int tickerId { get; set; }
-        public string tickerName { get; set; }
-        public Ticker ticker { get; set; }
-        public double state { get; set; }
-    }
-    public class Ticker
-    {
-        public int id { get; set; }
-        public string name { get; set; }
-        public List<Price> Prices { get; set; } = new();
-        public TodaysCondition Condition { get; set; } = new();
-    }
-    public class Price
-    {
-        public int id { get; set; }
-        public int tickerId { get; set; }
-        public string tickerName { get; set; }
-        public Ticker? ticker { get; set; }
-        public double price { get; set; }
-        public DateOnly date { get; set; }
-    }
-    public class ApplicationContext : DbContext
-    {
-        public DbSet<Ticker> Tickers { get; set; } = null!;
-        public DbSet<Price> Prices { get; set; } = null!;
-        public DbSet<TodaysCondition> Conditions { get; set; } = null!;
-        public ApplicationContext()
-        {
-            Database.EnsureCreatedAsync();
-        }
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlite("Data Source = ../../../tickerstest.sql");
-        }
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<Ticker>().HasKey(u => new { u.id, u.name });
-            modelBuilder.Entity<Price>().HasOne(p => p.ticker).WithMany(q => q.Prices)
-                .HasForeignKey(r => new { r.tickerId, r.tickerName });
-            modelBuilder.Entity<TodaysCondition>().HasOne(p => p.ticker).WithOne(q => q.Condition)
-                .HasForeignKey<TodaysCondition>(e => new { e.tickerId, e.tickerName });
-        }
-    }
-    static async Task Main()
-    {
-        async Task FeelDB()
-        {
-            using (StreamReader datar = new StreamReader("C:\\Users\\pkapa\\source\\repos\\lab10\\ticker.txt"))
-            {
-                List<string> data = new List<string>();
-                while (!datar.EndOfStream)
-                {
-                    string? line1 = datar.ReadLine();
-                    data.Add(line1);
-                }
+        int lastCommaIndex = inputString.LastIndexOf(',');
 
-                await Task.WhenAll(data.ConvertAll(PrintAsync));
-            }
-            async Task PrintAsync(string data)
+        // Проверяем, что найден хотя бы один индекс запятой
+        if (lastCommaIndex != -1)
+        {
+            int secondLastCommaIndex = inputString.LastIndexOf(',', lastCommaIndex - 1);
+
+            // Проверяем, что найдены оба индекса
+            if (secondLastCommaIndex != -1)
             {
-                string url = $"https://query1.finance.yahoo.com/v7/finance/download/{data}?period1={DateTimeOffset.Now.ToUnixTimeSeconds() - 31556926}&period2={DateTimeOffset.Now.ToUnixTimeSeconds()}&interval=1d&events=history&includeAdjustedClose=true";
+                // Получаем подстроку между предпоследней и последней запятой
+                string result =
+                    inputString.Substring(secondLastCommaIndex + 1, lastCommaIndex - secondLastCommaIndex - 1);
+
+                return result;
+            }
+            return "";
+        }
+        return "";
+    }
+
+    async static Task Main()
+    {
+        string connectionString = "server=localhost;user=root;password=dindon07;database=Lab_10;";
+
+        MySqlConnection connection = new MySqlConnection(connectionString);
+
+        try
+        {
+            connection.Open();
+            Console.WriteLine("Соединение установлено!");
+            List<String> Data = new List<string>(); // лист тикетов
+            string filePath = "/Users/pavelerokhin/CS_Labs/Lab_09/ticker.txt";
+            using (StreamReader reader = new StreamReader(filePath))
+            {
+                while (!reader.EndOfStream)
+                {
+                    string line = reader.ReadLine();
+                    Data.Add(reader.ReadLine());
+                    Console.WriteLine(line);
+                }
+            }
+
+            long id = 0;
+            List<string> stonks = new List<string> { "up", "down" };
+            Random random = new Random();
+
+
+            foreach (string ticket in Data) // Проход по Data
+            {
+                int stonk = random.Next(2);
                 HttpClient httpClient = new HttpClient();
-                string data1;
+                // string csvData;
+                string url =
+                    $"https://query1.finance.yahoo.com/v7/finance/download/{ticket}?period1={DateTimeOffset.Now.ToUnixTimeSeconds() - 86400}&period2={DateTimeOffset.Now.ToUnixTimeSeconds()}&interval=1d&events=history&includeAdjustedClose=true";
                 HttpResponseMessage response = await httpClient.GetAsync(url);
                 using (Stream stream = await response.Content.ReadAsStreamAsync())
                 using (StreamReader sr1 = new StreamReader(stream))
-                { data1 = sr1.ReadToEnd(); }
-                ApplicationContext db = new ApplicationContext();
-                Ticker A = new Ticker();
-                A.name = data;
-                await db.Tickers.AddAsync(A);
-                List<string> days = new List<string>(data1.Split('\n'));
-                days.RemoveAt(0);
-                List<Price> temp = new List<Price>();
-                foreach (string day in days)
                 {
-                    string[] main = day.Split(',');
-                    double CurrentPrice = Convert.ToDouble(main[2].Replace('.', ',')) - Convert.ToDouble(main[3].Replace('.', ',')) / 2;
-                    DateOnly CurrentDate = DateOnly.Parse(main[0]);
-                    Price B = new Price();
-                    B.price = CurrentPrice;
-                    B.date = CurrentDate;
-                    B.ticker = A;
-                    temp.Add(B);
+                    string csvData = sr1.ReadToEnd();
+                    string updateQuery =
+                        "INSERT INTO Prices (id, tickerid, prices, todaysCondition) VALUES (@id, @TickerId, @Prices, @TodaysCondition)";
+                    using (MySqlCommand command = new MySqlCommand(updateQuery, connection))
+                    {
+                        // Установка значений параметров
+
+                        command.Parameters.AddWithValue("@id", id);
+                        command.Parameters.AddWithValue("@TickerId", ticket);
+                        command.Parameters.AddWithValue("@Prices", Parse(csvData));
+                        command.Parameters.AddWithValue("@TodaysCondition", stonks[stonk]);
+                        id++;
+
+                        // Выполнение команды
+                        command.ExecuteNonQuery();
+                    }
                 }
-                List<string> day1 = new List<string>(days[days.Count - 1].Split(','));
-                double day1price = Convert.ToDouble(day1[2].Replace('.', ',')) - Convert.ToDouble(day1[3].Replace('.', ',')) / 2;
-                List<string> day2 = new List<string>(days[days.Count - 2].Split(','));
-                double day2price = Convert.ToDouble(day2[2].Replace('.', ',')) - Convert.ToDouble(day2[3].Replace('.', ',')) / 2;
-                double Change = day1price - day2price;
-                TodaysCondition C = new TodaysCondition() { ticker = A, state = Change };
-                await db.Conditions.AddAsync(C);
-                await db.Prices.AddRangeAsync(temp);
-                await db.SaveChangesAsync();
             }
+
+            connection.Close();
         }
-        FeelDB();
-        Console.WriteLine("Enter ticker: ");
-        string ans = Console.ReadLine();
-        ApplicationContext db = new ApplicationContext();
-        Ticker? ticker = db.Tickers.FirstOrDefault(p => p.name == ans);
-        if (ticker != null)
+        catch (MySqlException ex)
         {
-            db.Conditions.Where(u => u.tickerId == ticker.id).Load();
-            Console.WriteLine($"\n{ticker.name}:");
-            if (ticker.Condition.state > 0)
-            {
-                Console.WriteLine($"Stock rose by {ticker.Condition.state}" + '$');
-            }
-            else if (ticker.Condition.state < 0)
-            {
-                Console.WriteLine($"Stock fell by {-(ticker.Condition.state)}" + '$');
-            }
-            else
-            {
-                Console.WriteLine("Share price has not changed");
-            }
+            Console.WriteLine("Ошибка подключения: " + ex.Message);
         }
     }
 }
